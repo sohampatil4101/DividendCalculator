@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dividend Calculator</title>
+<style>
+    body {
+        font-family: Inter, system-ui, Arial, sans-serif;
+        background: #0f172a;
+        color: #e5e7eb;
+        margin: 0;
+        padding: 30px;
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+
+    .card {
+        background: #020617;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .top-input {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    input {
+        background: #020617;
+        border: 1px solid #334155;
+        color: #e5e7eb;
+        padding: 8px 10px;
+        border-radius: 8px;
+        width: 120px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    th, td {
+        border: 1px solid #334155;
+        padding: 8px;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    th {
+        background: #020617;
+        position: sticky;
+        top: 0;
+    }
+
+    button {
+        background: #2563eb;
+        border: none;
+        color: white;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #1d4ed8;
+    }
+
+    .danger {
+        background: #dc2626;
+    }
+
+    .danger:hover {
+        background: #b91c1c;
+    }
+
+    .footer {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .highlight {
+        font-size: 16px;
+        font-weight: 600;
+        color: #22c55e;
+    }
+</style>
+</head>
+<body>
+
+<h1>📈 Dividend Investment Calculator</h1>
+
+<div class="card">
+
+    <div class="top-input">
+        <label>Investment Amount:</label>
+        <input type="number" id="amount" value="8000">
+        <button onclick="addRow()">+ Add Company</button>
+        <button onclick="saveData()">💾 Save</button>
+    </div>
+
+    <table id="table">
+        <thead>
+        <tr>
+            <th>Company</th>
+            <th>Stock Price</th>
+            <th>Face Value</th>
+            <th>Dividend %</th>
+            <th>Dividend / Share</th>
+            <th>Shares Buyable</th>
+            <th>Invested</th>
+            <th>Remaining</th>
+            <th>Total Dividend</th>
+            <th>Remove</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div class="footer">
+        <div class="highlight" id="bestCompany">
+            Best dividend company: —
+        </div>
+    </div>
+
+</div>
+
+<script>
+const tableBody = document.querySelector("#table tbody");
+const amountInput = document.getElementById("amount");
+
+function addRow(data = {}) {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+        <td><input value="${data.company || ""}"></td>
+        <td><input type="number" value="${data.price || ""}"></td>
+        <td><input type="number" value="${data.face || ""}"></td>
+        <td><input type="number" value="${data.div || ""}"></td>
+        <td class="dps">0</td>
+        <td class="shares">0</td>
+        <td class="invested">0</td>
+        <td class="remaining">0</td>
+        <td class="total">0</td>
+        <td><button class="danger">✕</button></td>
+    `;
+
+    tr.querySelector(".danger").onclick = () => {
+        tr.remove();
+        calculate();
+    };
+
+    tr.querySelectorAll("input").forEach(i =>
+        i.addEventListener("input", calculate)
+    );
+
+    tableBody.appendChild(tr);
+    calculate();
+}
+
+function calculate() {
+    const amount = Number(amountInput.value) || 0;
+    let best = { name: "", value: 0 };
+
+    [...tableBody.rows].forEach(row => {
+        const inputs = row.querySelectorAll("input");
+        const company = inputs[0].value;
+        const price = Number(inputs[1].value);
+        const face = Number(inputs[2].value);
+        const div = Number(inputs[3].value);
+
+        if (!price || !face || !div) return;
+
+        const dps = (face * div) / 100;
+        const shares = Math.floor(amount / price);
+        const invested = shares * price;
+        const remaining = amount - invested;
+        const totalDiv = shares * dps;
+
+        row.querySelector(".dps").textContent = dps.toFixed(2);
+        row.querySelector(".shares").textContent = shares;
+        row.querySelector(".invested").textContent = invested.toFixed(2);
+        row.querySelector(".remaining").textContent = remaining.toFixed(2);
+        row.querySelector(".total").textContent = totalDiv.toFixed(2);
+
+        if (totalDiv > best.value) {
+            best = { name: company, value: totalDiv };
+        }
+    });
+
+    document.getElementById("bestCompany").textContent =
+        best.name
+            ? `Best dividend company: ${best.name} (₹${best.value.toFixed(2)})`
+            : "Best dividend company: —";
+}
+
+function saveData() {
+    const rows = [...tableBody.rows].map(row => {
+        const inputs = row.querySelectorAll("input");
+        return {
+            company: inputs[0].value,
+            price: inputs[1].value,
+            face: inputs[2].value,
+            div: inputs[3].value
+        };
+    });
+
+    localStorage.setItem("dividendData", JSON.stringify({
+        amount: amountInput.value,
+        rows
+    }));
+
+    alert("Saved to local storage");
+}
+
+function loadData() {
+    const data = JSON.parse(localStorage.getItem("dividendData"));
+    if (!data) return;
+
+    amountInput.value = data.amount;
+    data.rows.forEach(r => addRow(r));
+}
+
+amountInput.addEventListener("input", calculate);
+loadData();
+</script>
+
+</body>
+</html>
